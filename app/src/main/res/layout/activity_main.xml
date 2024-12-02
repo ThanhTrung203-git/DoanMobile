@@ -1,0 +1,56 @@
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <!-- Các nút chức năng -->
+    <LinearLayout
+        android:id="@+id/buttonLayout"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_margin="16dp"
+        android:gravity="center"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <Button
+            android:id="@+id/resetButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Reset" />
+
+        <Button
+            android:id="@+id/hintButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hint"
+            android:layout_marginStart="8dp" />
+
+        <Button
+            android:id="@+id/settingsButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Setting"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <!-- Lưới chứa các mảnh ghép -->
+    <GridLayout
+        android:id="@+id/gridLayout"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="16dp"
+        android:columnCount="3"
+        android:rowCount="3"
+        app:layout_constraintTop_toBottomOf="@id/buttonLayout"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:background="#DDDDDD" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
