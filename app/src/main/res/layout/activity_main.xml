@@ -37,6 +37,7 @@
             android:layout_height="wrap_content"
             android:text="Setting"
             android:layout_marginStart="8dp" />
+
     </LinearLayout>
 
     <!-- Lưới chứa các mảnh ghép -->

@@ -1,8 +1,10 @@
 package com.example.slidepuzzle;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -16,6 +18,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.button.MaterialButton;
+
 import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
@@ -25,6 +29,8 @@ public class MainActivity extends AppCompatActivity {
     private int[][] grid;
     private int numRows = 3;
     private int numColumns = 3;
+    private int selectedImageResId = R.drawable.diana_47; // Ảnh mặc định
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
         gridLayout.setColumnCount(numColumns);
 
         // Tải ảnh và cắt thành các mảnh
-        Bitmap sourceImage = BitmapFactory.decodeResource(getResources(), R.drawable.diana_47);
+        Bitmap sourceImage = BitmapFactory.decodeResource(getResources(), selectedImageResId);
         if (sourceImage == null) {
             throw new RuntimeException("Source image not found. Ensure R.drawable.puzzle_image exists.");
         }
@@ -48,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.resetButton).setOnClickListener(v -> shuffleGrid());
         findViewById(R.id.hintButton).setOnClickListener(v -> showHintDialog());
         findViewById(R.id.settingsButton).setOnClickListener(v -> showSettingsDialog());
+
     }
 
     private Bitmap[][] splitImage(Bitmap source, int rows, int cols) {
@@ -204,7 +211,7 @@ public class MainActivity extends AppCompatActivity {
         builder.setTitle("Hint");
 
         ImageView hintImage = new ImageView(this);
-        hintImage.setImageBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.diana_47));
+        hintImage.setImageBitmap(BitmapFactory.decodeResource(getResources(), selectedImageResId));
         hintImage.setAdjustViewBounds(true);
 
         builder.setView(hintImage);
@@ -218,11 +225,18 @@ public class MainActivity extends AppCompatActivity {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_settings, null);
         builder.setView(dialogView);
 
+        MaterialButton selectImageButton = dialogView.findViewById(R.id.chooseImageButton);
+
+        selectImageButton.setOnClickListener(v -> {
+            showImageSelectionDialog();
+        });
+
+        // Cập nhật khi chọn số hàng và cột
         EditText rowsInput = dialogView.findViewById(R.id.rowsInput);
         EditText columnsInput = dialogView.findViewById(R.id.columnsInput);
 
+        builder.setView(dialogView);
         AlertDialog dialog = builder.create();
-
         dialogView.findViewById(R.id.applyButton).setOnClickListener(v -> {
             String rowsText = rowsInput.getText().toString();
             String columnsText = columnsInput.getText().toString();
@@ -244,7 +258,6 @@ public class MainActivity extends AppCompatActivity {
                 dialog.dismiss();
             }
         });
-
         dialog.show();
     }
 
@@ -260,11 +273,37 @@ public class MainActivity extends AppCompatActivity {
         }
         grid[numRows - 1][numColumns - 1] = 0;
 
-        Bitmap sourceImage = BitmapFactory.decodeResource(getResources(), R.drawable.diana_47);
+        Bitmap sourceImage = BitmapFactory.decodeResource(getResources(), selectedImageResId);
         imagePieces = splitImage(sourceImage, numRows, numColumns);
 
         initializeGrid();
     }
+
+    private void showImageSelectionDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Choose an Image");
+
+        // Mảng ID của các ảnh
+        int[] imageResIds = {
+                R.drawable.image_1, R.drawable.image_2, R.drawable.image_3,
+                R.drawable.image_4, R.drawable.image_5, R.drawable.image_6,
+                R.drawable.image_7, R.drawable.image_8, R.drawable.image_9, R.drawable.image_10
+        };
+
+        // Tạo danh sách ảnh dưới dạng tên
+        String[] imageNames = {"Image 1", "Image 2", "Image 3", "Image 4", "Image 5",
+                "Image 6", "Image 7", "Image 8", "Image 9", "Image 10"};
+
+        builder.setItems(imageNames, (dialog, which) -> {
+            selectedImageResId = imageResIds[which]; // Lưu ID ảnh được chọn
+            restartGame(); // Khởi động lại trò chơi với ảnh mới
+        });
+
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+        builder.show();
+    }
+
 }
 
 
