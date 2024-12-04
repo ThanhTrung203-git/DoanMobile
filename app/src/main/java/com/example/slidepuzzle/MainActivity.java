@@ -54,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
         int sourceWidth = source.getWidth();
         int sourceHeight = source.getHeight();
 
+        // Kích thước của từng mảnh ghép
         int pieceWidth = sourceWidth / cols;
         int pieceHeight = sourceHeight / rows;
 
@@ -61,37 +62,66 @@ public class MainActivity extends AppCompatActivity {
 
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                pieces[i][j] = Bitmap.createBitmap(source, j * pieceWidth, i * pieceHeight, pieceWidth, pieceHeight);
+                // Xác định tọa độ và kích thước của từng mảnh
+                int x = j * pieceWidth;
+                int y = i * pieceHeight;
+
+                // Nếu là mảnh cuối cùng ở hàng hoặc cột, điều chỉnh kích thước
+                int width = (j == cols - 1) ? sourceWidth - x : pieceWidth;
+                int height = (i == rows - 1) ? sourceHeight - y : pieceHeight;
+
+                // Cắt mảnh ghép từ ảnh nguồn
+                pieces[i][j] = Bitmap.createBitmap(source, x, y, width, height);
             }
         }
 
         return pieces;
     }
 
-    private void initializeGrid() {
-        gridLayout.removeAllViews(); // Xóa các thành phần cũ
 
-        buttons = new ImageButton[numRows][numColumns]; // Khởi tạo lại buttons
+
+    private void initializeGrid() {
+        // Đảm bảo xóa toàn bộ các thành phần trước khi thêm mới
+        gridLayout.removeAllViews();
+
+        // Thiết lập lại số hàng và số cột
+        gridLayout.setRowCount(numRows);
+        gridLayout.setColumnCount(numColumns);
+
+        // Tính toán kích thước ô dựa trên GridLayout
+        int buttonWidth = gridLayout.getWidth() / numColumns;
+        int buttonHeight = gridLayout.getHeight() / numRows;
+
+        buttons = new ImageButton[numRows][numColumns]; // Khởi tạo lại mảng nút
 
         for (int i = 0; i < numRows; i++) {
             for (int j = 0; j < numColumns; j++) {
                 ImageButton button = new ImageButton(this);
-                button.setLayoutParams(new GridLayout.LayoutParams(
-                        new ViewGroup.LayoutParams(
-                                gridLayout.getWidth() / numColumns,
-                                gridLayout.getHeight() / numRows
-                        )
-                ));
+
+                // Thiết lập LayoutParams chính xác
+                GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+                params.width = buttonWidth;
+                params.height = buttonHeight;
+                params.rowSpec = GridLayout.spec(i); // Đảm bảo chỉ số hàng không vượt quá numRows
+                params.columnSpec = GridLayout.spec(j); // Đảm bảo chỉ số cột không vượt quá numColumns
+
+                // Giảm khoảng cách (margin)
+                int marginInPx = (int) (2 * getResources().getDisplayMetrics().density); // 2dp -> px
+                params.setMargins(marginInPx, marginInPx, marginInPx, marginInPx);
+
+                button.setLayoutParams(params);
                 button.setScaleType(ImageView.ScaleType.FIT_XY);
 
-                // Gán sự kiện click cho mỗi ô
+                // Gán sự kiện click
                 button.setOnClickListener(new ButtonClickListener(i, j));
 
+                // Thêm nút vào GridLayout
                 gridLayout.addView(button);
                 buttons[i][j] = button;
             }
         }
 
+        // Cập nhật giao diện nút với trạng thái ban đầu
         updateButtons();
     }
 
@@ -99,10 +129,14 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < numRows; i++) {
             for (int j = 0; j < numColumns; j++) {
                 if (grid[i][j] == 0) {
-                    buttons[i][j].setImageDrawable(null);
+                    buttons[i][j].setImageDrawable(null); // Ô trống
                 } else {
                     int pieceIndex = grid[i][j] - 1;
-                    buttons[i][j].setImageBitmap(imagePieces[pieceIndex / numColumns][pieceIndex % numColumns]);
+                    int pieceRow = pieceIndex / numColumns;
+                    int pieceCol = pieceIndex % numColumns;
+
+                    // Đảm bảo mảnh ghép lấy đúng từ imagePieces
+                    buttons[i][j].setImageBitmap(imagePieces[pieceRow][pieceCol]);
                 }
             }
         }
@@ -151,20 +185,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkWin() {
-        int[][] winState = new int[numRows][numColumns];
         int count = 1;
         for (int i = 0; i < numRows; i++) {
             for (int j = 0; j < numColumns; j++) {
-                winState[i][j] = count++;
+                if (i == numRows - 1 && j == numColumns - 1) {
+                    if (grid[i][j] != 0) return;
+                } else {
+                    if (grid[i][j] != count++) return;
+                }
             }
         }
-        winState[numRows - 1][numColumns - 1] = 0;
 
-        for (int i = 0; i < numRows; i++) {
-            for (int j = 0; j < numColumns; j++) {
-                if (grid[i][j] != winState[i][j]) return;
-            }
-        }
         Toast.makeText(this, "You Win!", Toast.LENGTH_SHORT).show();
     }
 
