@@ -20,6 +20,7 @@ import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -38,6 +39,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+
 import android.Manifest;
 
 public class MainActivity extends AppCompatActivity {
@@ -48,11 +51,12 @@ public class MainActivity extends AppCompatActivity {
     private int numRows = 3;
     private int numColumns = 3;
     private int selectedImageResId = R.drawable.diana_47; // Ảnh mặc định
-
+    private Button btnViewRecords;
     private CountDownTimer countDownTimer;
     private boolean isTimerRunning = false;
     private Bitmap selectedBitmap; // Thêm biến toàn cục để lưu ảnh đã chọn
-
+    private long startTimeInMillis = 60000;
+    private long remainingTimeInMillis = startTimeInMillis;
     private TextView timerTextView;
 
 
@@ -78,6 +82,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.resetButton).setOnClickListener(v -> shuffleGrid());
         findViewById(R.id.hintButton).setOnClickListener(v -> showHintDialog());
         findViewById(R.id.settingsButton).setOnClickListener(v -> showSettingsDialog());
+        findViewById(R.id.viewRecordsButton).setOnClickListener(v -> showRecordsDialog());
         timerTextView = findViewById(R.id.timerTextView);
         // Kiểm tra quyền đọc bộ nhớ
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -277,8 +282,10 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
+        stopTimer();
 
-        Toast.makeText(this, "You Win!", Toast.LENGTH_SHORT).show();
+        long completionTime = startTimeInMillis - remainingTimeInMillis;
+        showWinDialog(completionTime);
     }
 
     private void showHintDialog() {
@@ -328,7 +335,7 @@ public class MainActivity extends AppCompatActivity {
         EditText rowsInput = dialogView.findViewById(R.id.rowsInput);
         EditText columnsInput = dialogView.findViewById(R.id.columnsInput);
         Switch settingsSwitch = dialogView.findViewById(R.id.settingsSwitch); // Lấy Switch từ dialog
-
+        //time swtich
         settingsSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             // Khi Switch thay đổi trạng thái, bật/tắt đồng hồ
             if (isChecked) {
@@ -367,7 +374,6 @@ public class MainActivity extends AppCompatActivity {
         });
         dialog.show();
     }
-
 
     private void restartGame() {
         grid = new int[numRows][numColumns];
@@ -452,14 +458,11 @@ public class MainActivity extends AppCompatActivity {
         initializeGrid();
     }
 
-
-
     private void startTimer(TextView timerTextView) {
-        long startTimeInMillis = 60000;
         countDownTimer = new CountDownTimer(startTimeInMillis, 1000) {
             @Override
             public void onTick(long millisUntilFinished) {
-                // Cập nhật thời gian hiển thị
+                remainingTimeInMillis = millisUntilFinished; // Update remaining time
                 int seconds = (int) (millisUntilFinished / 1000);
                 String time = String.format(Locale.getDefault(), "%02d:%02d", seconds / 60, seconds % 60);
                 timerTextView.setText(time); // Hiển thị thời gian
@@ -469,12 +472,13 @@ public class MainActivity extends AppCompatActivity {
             public void onFinish() {
                 // Khi thời gian kết thúc
                 timerTextView.setText("00:00");
-                Toast.makeText(MainActivity.this, "Timer finished", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Game Over!!!", Toast.LENGTH_SHORT).show();
             }
         };
         countDownTimer.start(); // Bắt đầu đếm ngược
-        Toast.makeText(this,"Timer started",Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Timer started", Toast.LENGTH_SHORT).show();
     }
+
 
     private void stopTimer() {
         if (countDownTimer != null) {
@@ -499,6 +503,135 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
+    private void showWinDialog(long completionTime) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Congratulations!");
+
+        // Add EditText to enter player name
+        EditText input = new EditText(this);
+        input.setHint("Enter your name");
+        builder.setView(input);
+
+        // Positive button to save the record
+        builder.setPositiveButton("Save", (dialog, which) -> {
+            String playerName = input.getText().toString().trim();
+            if (!playerName.isEmpty()) {
+                saveRecord(playerName, completionTime); // Save the record with the name and completion time
+            }
+            dialog.dismiss();
+        });
+
+        // Negative button to cancel
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+        // Create and show the dialog
+        builder.create().show();
+    }
+
+    private void saveRecord(String playerName, long completionTime) {
+        // Format the completion time as hh:mm:ss
+        String formattedTime = formatTime(completionTime);
+
+        // Get SharedPreferences and prepare to save the record
+        SharedPreferences sharedPreferences = getSharedPreferences("GameRecords", MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+
+        // Save the record with the player's name as the key and the time as the value
+        String record = playerName + " - " + numColumns + " x " + numRows + " - " + formattedTime + "s";
+        editor.putString(playerName, record);  // Store name and time
+
+        editor.apply();  // Apply the changes
+        Toast.makeText(this, "Record saved!", Toast.LENGTH_SHORT).show();
+    }
+
+    private String formatTime(long timeMillis) {
+        int seconds = (int) (timeMillis / 1000) % 60;
+        int minutes = (int) ((timeMillis / (1000 * 60)) % 60);
+        int hours = (int) ((timeMillis / (1000 * 60 * 60)) % 24);
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+    }
+
+    private void showRecordsDialog() {
+        SharedPreferences sharedPreferences = getSharedPreferences("GameRecords", MODE_PRIVATE);
+        Map<String, ?> allRecords = sharedPreferences.getAll();
+
+        if (allRecords.isEmpty()) {
+            Toast.makeText(this, "Không có kỷ lục nào!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Tạo AlertDialog.Builder
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Danh sách Kỷ Lục");
+
+        // Dùng StringBuilder để tạo danh sách kỷ lục
+        StringBuilder records = new StringBuilder();
+        for (Map.Entry<String, ?> entry : allRecords.entrySet()) {
+            String record = entry.getKey() + " - " + entry.getValue().toString();
+            records.append(record).append("\n");
+        }
+
+        // Tạo layout tùy chỉnh cho mỗi item trong dialog
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+
+        // Tạo các mục và nút xóa cho từng kỷ lục
+        for (Map.Entry<String, ?> entry : allRecords.entrySet()) {
+            String record = entry.getKey() + " - " + entry.getValue().toString();
+
+            // Tạo TextView để hiển thị kỷ lục
+            TextView recordTextView = new TextView(this);
+            recordTextView.setText(record);
+            recordTextView.setPadding(0, 10, 0, 10);
+
+            // Tạo Button để xóa kỷ lục
+            Button deleteButton = new Button(this);
+            deleteButton.setText("Xóa");
+            deleteButton.setOnClickListener(v -> {
+                String playerName = entry.getKey(); // Lấy tên người chơi từ kỷ lục
+                deleteRecord(playerName); // Gọi phương thức xóa kỷ lục
+            });
+
+            // Thêm TextView và Button vào layout
+            LinearLayout itemLayout = new LinearLayout(this);
+            itemLayout.setOrientation(LinearLayout.HORIZONTAL);
+            itemLayout.setPadding(10, 10, 10, 10);
+            itemLayout.addView(recordTextView);
+            itemLayout.addView(deleteButton);
+
+            // Thêm item vào layout chính
+            layout.addView(itemLayout);
+        }
+
+        // Thiết lập layout cho AlertDialog
+        builder.setView(layout);
+
+        // Thêm nút đóng
+        builder.setPositiveButton("Đóng", (dialog, which) -> dialog.dismiss());
+
+        // Hiển thị dialog
+        builder.create().show();
+    }
+
+
+
+    private void deleteRecord(String playerName) {
+        // Lấy SharedPreferences
+        SharedPreferences sharedPreferences = getSharedPreferences("GameRecords", MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+
+        // Xóa kỷ lục theo tên người chơi
+        editor.remove(playerName);
+
+        // Áp dụng thay đổi
+        editor.apply();
+
+        Toast.makeText(this, "Kỷ lục của " + playerName + " đã bị xóa!", Toast.LENGTH_SHORT).show();
+    }
+
+
+
 }
 
 

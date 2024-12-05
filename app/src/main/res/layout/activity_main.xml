@@ -11,12 +11,12 @@
         android:id="@+id/buttonLayout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_margin="16dp"
+        android:layout_margin="10dp"
         android:gravity="center"
-        app:layout_constraintTop_toTopOf="parent"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toTopOf="parent">
 
         <Button
             android:id="@+id/resetButton"
@@ -28,26 +28,47 @@
             android:id="@+id/hintButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Hint"
-            android:layout_marginStart="8dp" />
+            android:layout_marginStart="5dp"
+            android:text="Hint" />
 
         <Button
             android:id="@+id/settingsButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Setting"
-            android:layout_marginStart="8dp" />
+            android:layout_marginStart="5dp"
+            android:text="Setting" />
 
-        <TextView
-            android:id="@+id/timerTextView"
+        <Button
+            android:id="@+id/viewRecordsButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="00:00"
-            android:textSize="24sp"
-            android:layout_marginStart="8dp"/>
+            android:layout_marginStart="5dp"
+            android:text="Records" />
 
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/textViewLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="0dp"
+        android:orientation="horizontal"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/buttonLayout">
+
+        <TextView
+            android:id="@+id/timerTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginStart="8dp"
+            android:gravity="center"
+            android:text="00:00"
+            android:textAlignment="center"
+            android:textSize="24sp" />
+
+    </LinearLayout>
     <!-- Lưới chứa các mảnh ghép -->
     <GridLayout
         android:id="@+id/gridLayout"
@@ -57,7 +78,7 @@
         android:padding="0dp"
         android:columnCount="3"
         android:rowCount="3"
-        app:layout_constraintTop_toBottomOf="@id/buttonLayout"
+        app:layout_constraintTop_toBottomOf="@id/textViewLayout"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

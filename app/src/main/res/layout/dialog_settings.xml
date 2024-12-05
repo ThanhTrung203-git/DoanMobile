@@ -31,7 +31,7 @@
         android:id="@+id/settingsSwitch"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Enable Timer"
+        android:text="Reset Timer"
         android:checked="false"/>
 
 
