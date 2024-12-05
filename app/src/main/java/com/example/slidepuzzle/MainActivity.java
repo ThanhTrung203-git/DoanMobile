@@ -1,7 +1,9 @@
 package com.example.slidepuzzle;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -12,6 +14,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.GridLayout;
@@ -21,14 +24,21 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.google.android.material.button.MaterialButton;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
-import java.util.Random;
+import android.Manifest;
 
 public class MainActivity extends AppCompatActivity {
     private GridLayout gridLayout;
@@ -41,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
 
     private CountDownTimer countDownTimer;
     private boolean isTimerRunning = false;
+    private Bitmap selectedBitmap; // Thêm biến toàn cục để lưu ảnh đã chọn
 
     private TextView timerTextView;
 
@@ -68,6 +79,12 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.hintButton).setOnClickListener(v -> showHintDialog());
         findViewById(R.id.settingsButton).setOnClickListener(v -> showSettingsDialog());
         timerTextView = findViewById(R.id.timerTextView);
+        // Kiểm tra quyền đọc bộ nhớ
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            // Nếu không có quyền, yêu cầu quyền
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 101);
+        }
+
 
     }
 
@@ -125,10 +142,6 @@ public class MainActivity extends AppCompatActivity {
                 params.height = buttonHeight;
                 params.rowSpec = GridLayout.spec(i); // Đảm bảo chỉ số hàng không vượt quá numRows
                 params.columnSpec = GridLayout.spec(j); // Đảm bảo chỉ số cột không vượt quá numColumns
-
-                // Giảm khoảng cách (margin)
-                int marginInPx = (int) (2 * getResources().getDisplayMetrics().density); // 2dp -> px
-                params.setMargins(marginInPx, marginInPx, marginInPx, marginInPx);
 
                 button.setLayoutParams(params);
                 button.setScaleType(ImageView.ScaleType.FIT_XY);
@@ -197,13 +210,61 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void shuffleGrid() {
-        Random random = new Random();
-        for (int i = 0; i < 100; i++) {
-            int row = random.nextInt(numRows);
-            int col = random.nextInt(numColumns);
-            moveTile(row, col);
+        // Tạo danh sách chứa tất cả giá trị trong grid
+        List<Integer> values = new ArrayList<>();
+        for (int i = 0; i < numRows; i++) {
+            for (int j = 0; j < numColumns; j++) {
+                values.add(grid[i][j]);
+            }
+        }
+
+        // Trộn danh sách ngẫu nhiên
+        Collections.shuffle(values);
+
+        // Kiểm tra nếu cần phải đảm bảo trạng thái có thể giải được
+        if (!isSolvable(values)) {
+            // Nếu không thể giải, hoán đổi hai giá trị bất kỳ (trừ 0)
+            if (values.size() > 2) {
+                int temp = values.get(0);
+                values.set(0, values.get(1));
+                values.set(1, temp);
+            }
+        }
+
+        // Gán lại các giá trị từ danh sách vào grid
+        int index = 0;
+        for (int i = 0; i < numRows; i++) {
+            for (int j = 0; j < numColumns; j++) {
+                grid[i][j] = values.get(index++);
+            }
+        }
+
+        // Cập nhật giao diện người dùng
+        updateButtons();
+    }
+
+    private boolean isSolvable(List<Integer> values) {
+        int inversions = 0;
+        int gridSize = values.size();
+
+        for (int i = 0; i < gridSize; i++) {
+            for (int j = i + 1; j < gridSize; j++) {
+                if (values.get(i) != 0 && values.get(j) != 0 && values.get(i) > values.get(j)) {
+                    inversions++;
+                }
+            }
+        }
+
+        // Nếu số hàng lẻ, hoán vị phải chẵn
+        if (numRows % 2 == 1) {
+            return inversions % 2 == 0;
+        } else {
+            // Nếu số hàng chẵn, kiểm tra vị trí ô trống (tính từ dưới lên)
+            int blankRowFromBottom = numRows - (values.indexOf(0) / numColumns);
+            return (inversions % 2 == 0) == (blankRowFromBottom % 2 == 1);
         }
     }
+
 
     private void checkWin() {
         int count = 1;
@@ -225,7 +286,13 @@ public class MainActivity extends AppCompatActivity {
         builder.setTitle("Hint");
 
         ImageView hintImage = new ImageView(this);
-        hintImage.setImageBitmap(BitmapFactory.decodeResource(getResources(), selectedImageResId));
+        if (selectedBitmap != null) {
+            // Hiển thị ảnh từ thư viện
+            hintImage.setImageBitmap(selectedBitmap);
+        } else {
+            // Hiển thị ảnh mặc định
+            hintImage.setImageBitmap(BitmapFactory.decodeResource(getResources(), selectedImageResId));
+        }
         hintImage.setAdjustViewBounds(true);
 
         builder.setView(hintImage);
@@ -233,6 +300,7 @@ public class MainActivity extends AppCompatActivity {
 
         builder.create().show();
     }
+
 
     private void showSettingsDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -243,8 +311,15 @@ public class MainActivity extends AppCompatActivity {
         selectImageButton.setOnClickListener(v -> {
             showImageSelectionDialog();
         });
+
         MaterialButton selectImageGalleryButton = dialogView.findViewById(R.id.chooseImageGalleryButton);
         selectImageGalleryButton.setOnClickListener(v -> {
+            // Kiểm tra quyền đọc bộ nhớ
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                // Nếu không có quyền, yêu cầu quyền
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 101);
+            }
+
             Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
             intent.setType("image/*");
             startActivityForResult(intent, 100);
@@ -290,9 +365,9 @@ public class MainActivity extends AppCompatActivity {
                 dialog.dismiss();
             }
         });
-
         dialog.show();
     }
+
 
     private void restartGame() {
         grid = new int[numRows][numColumns];
@@ -338,29 +413,49 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
         if (requestCode == 100 && resultCode == RESULT_OK && data != null) {
-            // Lấy URI của ảnh được chọn
             Uri selectedImageUri = data.getData();
-
             try {
-                // Chuyển đổi URI thành Bitmap
-                Bitmap selectedImage = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImageUri);
+                // Lấy bitmap từ URI
+                selectedBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImageUri);
 
-                // Cập nhật ảnh mới vào mảng imagePieces và khởi động lại trò chơi
-                imagePieces = splitImage(selectedImage, numRows, numColumns);
-                restartGame();
+                // Cập nhật trò chơi với ảnh mới
+                imagePieces = splitImage(selectedBitmap, numRows, numColumns);
+                restartGameWithBitmap(); // Khởi động lại với bitmap mới
             } catch (IOException e) {
                 e.printStackTrace();
-                Toast.makeText(this, "Error loading image", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
             }
         }
     }
 
+    private void restartGameWithBitmap() {
+        if (selectedBitmap == null) {
+            restartGame(); // Nếu không có ảnh từ gallery, dùng ảnh mặc định
+            return;
+        }
+
+        grid = new int[numRows][numColumns];
+        buttons = new ImageButton[numRows][numColumns];
+
+        int count = 1;
+        for (int i = 0; i < numRows; i++) {
+            for (int j = 0; j < numColumns; j++) {
+                grid[i][j] = count++;
+            }
+        }
+        grid[numRows - 1][numColumns - 1] = 0;
+
+        imagePieces = splitImage(selectedBitmap, numRows, numColumns); // Dùng ảnh mới
+        initializeGrid();
+    }
+
+
+
     private void startTimer(TextView timerTextView) {
-        long startTimeInMillis = 10000;
+        long startTimeInMillis = 60000;
         countDownTimer = new CountDownTimer(startTimeInMillis, 1000) {
             @Override
             public void onTick(long millisUntilFinished) {
@@ -389,6 +484,21 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this,"Timer stopped",Toast.LENGTH_SHORT).show();
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == 101) { // Kiểm tra permission yêu cầu
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Quyền được cấp, mở gallery
+                Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                intent.setType("image/*");
+                startActivityForResult(intent, 100);
+            } else {
+                Toast.makeText(this, "Bạn cần cấp quyền để truy cập gallery!", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
 }
 
 
